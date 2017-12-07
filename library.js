@@ -41,7 +41,8 @@
 					}
 
 					var email = Array.isArray(profile.emails) && profile.emails.length ? profile.emails[0].value : '';
-					GitHub.login(profile.id, profile.username, email, function(err, user) {
+					var pictureUrl = Array.isArray(profile.photos) && profile.photos.length ? profile.photos[0].value : '';
+					GitHub.login(profile.id, profile.username, email, pictureUrl, function(err, user) {
 						if (err) {
 							return done(err);
 						}
@@ -89,7 +90,7 @@
 		})
 	};
 
-	GitHub.login = function(githubID, username, email, callback) {
+	GitHub.login = function(githubID, username, email, pictureUrl, callback) {
 		if (!email) {
 			email = username + '@users.noreply.github.com';
 		}
@@ -107,14 +108,28 @@
 			} else {
 				// New User
 				var success = function(uid) {
-					// trust github's email
-					User.setUserField(uid, 'email:confirmed', 1);
-
 					User.setUserField(uid, 'githubid', githubID);
 					db.setObjectField('githubid:uid', githubID, uid);
-					callback(null, {
-						uid: uid
+
+					// trust the email.
+					async.series([
+					  async.apply(User.setUserField, uid, 'email:confirmed', 1),
+					  async.apply(db.delete, 'uid:' + uid + ':confirm:email:sent'),
+					  async.apply(db.sortedSetRemove, 'users:notvalidated', uid),
+					  function (next) {
+					    // Save their photo, if present
+					    if (pictureUrl) {
+					      User.setUserField(uid, 'uploadedpicture', pictureUrl);
+					      User.setUserField(uid, 'picture', pictureUrl);
+					    }
+					    next();
+					  }
+					], function (err) {
+					  callback(err, {
+					    uid: uid
+					  });             
 					});
+
 				};
 
 				User.getUidByEmail(email, function(err, uid) {
