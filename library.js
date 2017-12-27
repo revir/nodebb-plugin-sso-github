@@ -127,14 +127,14 @@
 					], function (err) {
 					  callback(err, {
 					    uid: uid
-					  });             
+					  });
 					});
 
 				};
 
 				User.getUidByEmail(email, function(err, uid) {
 					if (!uid) {
-						User.create({username: username, email: email}, function(err, uid) {
+						User.create({username: username, email: email, registerFrom: 'github'}, function(err, uid) {
 							if (err !== null) {
 								callback(err);
 							} else {
