@@ -42,7 +42,7 @@
 
 					var email = Array.isArray(profile.emails) && profile.emails.length ? profile.emails[0].value : '';
 					var pictureUrl = Array.isArray(profile.photos) && profile.photos.length ? profile.photos[0].value : '';
-					GitHub.login(profile.id, profile.username, email, pictureUrl, function(err, user) {
+					GitHub.login(profile.id, profile.displayName, profile.username, email, pictureUrl, function(err, user) {
 						if (err) {
 							return done(err);
 						}
@@ -90,7 +90,7 @@
 		})
 	};
 
-	GitHub.login = function(githubID, username, email, pictureUrl, callback) {
+	GitHub.login = function(githubID, displayName, username, email, pictureUrl, callback) {
 		if (!email) {
 			email = username + '@users.noreply.github.com';
 		}
@@ -111,19 +111,29 @@
 					User.setUserField(uid, 'githubid', githubID);
 					db.setObjectField('githubid:uid', githubID, uid);
 
+					function mergeUserData(next) {
+            async.waterfall([
+							async.apply(User.getUserFields, uid, ['picture', 'firstName', 'lastName', 'fullname']),
+							function(info, next) {
+								if (!info.picture && pictureUrl) {
+									User.setUserField(uid, 'uploadedpicture', pictureUrl);
+	                User.setUserField(uid, 'picture', pictureUrl);
+								}
+
+								if (!info.fullname && displayName) {
+									User.setUserField(uid, 'fullname', displayName);
+								}
+								next();
+							}
+            ], next);
+          }
+
 					// trust the email.
 					async.series([
 					  async.apply(User.setUserField, uid, 'email:confirmed', 1),
 					  async.apply(db.delete, 'uid:' + uid + ':confirm:email:sent'),
 					  async.apply(db.sortedSetRemove, 'users:notvalidated', uid),
-					  function (next) {
-					    // Save their photo, if present
-					    if (pictureUrl) {
-					      User.setUserField(uid, 'uploadedpicture', pictureUrl);
-					      User.setUserField(uid, 'picture', pictureUrl);
-					    }
-					    next();
-					  }
+					  mergeUserData
 					], function (err) {
 					  callback(err, {
 					    uid: uid
@@ -135,7 +145,6 @@
 				User.getUidByEmail(email, function(err, uid) {
 					if (!uid) {
 						User.create({username: username,
-							fullname: username,
 							email: email,
 							registerFrom: 'github'}, function(err, uid) {
 							if (err !== null) {
