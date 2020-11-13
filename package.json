@@ -1,7 +1,7 @@
 {
   "name": "nodebb-plugin-sso-github2",
-  "version": "2.0.2",
-  "description": "NodeBB GitHub SSO 2",
+  "version": "2.2.2",
+  "description": "NodeBB GitHub SSO",
   "main": "library.js",
   "repository": {
     "type": "git",
@@ -36,6 +36,6 @@
     "passport-github2": "^0.1.9"
   },
   "nbbpm": {
-    "compatibility": "^1.0.1"
+    "compatibility": "^1.7.1"
   }
 }
