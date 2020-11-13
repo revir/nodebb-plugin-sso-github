@@ -116,12 +116,16 @@
 			} else {
 				// New User
 				var success = function(uid) {
-					// trust github's email
-					User.setUserField(uid, 'email:confirmed', 1);
-					db.sortedSetRemove('users:notvalidated', uid);
+					function checkEmail(next) {
+						if (GitHub.settings.needToVerifyEmail === 'on')
+							return next()
 
-					User.setUserField(uid, 'githubid', githubID);
-					db.setObjectField('githubid:uid', githubID, uid);
+						async.series([
+							async.apply(User.setUserField, uid, 'email:confirmed', 1),
+					  		async.apply(db.delete, 'uid:' + uid + ':confirm:email:sent'),
+					  		async.apply(db.sortedSetRemove, 'users:notvalidated', uid)
+						], next)
+					}
 
 					function mergeUserData(next) {
 						async.waterfall([
@@ -142,16 +146,15 @@
 
 					// trust the email.
 					async.series([
-					  async.apply(User.setUserField, uid, 'email:confirmed', 1),
-					  async.apply(db.delete, 'uid:' + uid + ':confirm:email:sent'),
-					  async.apply(db.sortedSetRemove, 'users:notvalidated', uid),
+					  async.apply(User.setUserField, uid, 'githubid', githubID),
+					  async.apply(db.setObjectField, 'githubid:uid', githubID, uid),
+					  checkEmail,
 					  mergeUserData
 					], function (err) {
 					  callback(err, {
 					    uid: uid
 					  });
 					});
-
 				};
 
 				User.getUidByEmail(email, function(err, uid) {
