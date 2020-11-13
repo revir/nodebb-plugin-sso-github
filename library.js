@@ -1,13 +1,14 @@
 (function(module) {
 	"use strict";
 
-	var User = module.parent.require('./user'),
-		db = module.parent.require('./database'),
-		meta = module.parent.require('./meta'),
-		nconf = module.parent.require('nconf'),
-		async = module.parent.require('async'),
-		passport = module.parent.require('passport'),
-		GithubStrategy = require('passport-github2').Strategy;
+	const User = require.main.require('./src/user');
+	const db = require.main.require('./src/database');
+	const meta = require.main.require('./src/meta');
+
+	const nconf = require.main.require('nconf');
+	const async = require.main.require('async');
+	const passport = require.main.require('passport');
+	const GithubStrategy = require('passport-github2').Strategy;
 
 	var winston = require('winston');
 
